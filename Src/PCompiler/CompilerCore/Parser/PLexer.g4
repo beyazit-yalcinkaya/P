@@ -48,6 +48,7 @@ OBSERVES  : 'observes' ;
 ON        : 'on' ;
 POP       : 'pop' ;
 PRINT     : 'print' ;
+PRIORITY  : 'priority' ;
 PUSH      : 'push' ;
 RAISE     : 'raise' ;
 RECEIVE   : 'receive' ;

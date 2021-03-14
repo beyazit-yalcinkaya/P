@@ -55,6 +55,11 @@ namespace Plang.Compiler.TypeChecker
             pEvent.Assume = hasAssume ? cardinality : -1;
             pEvent.Assert = hasAssert ? cardinality : -1;
 
+            // priority?
+            bool hasPriority = context.priority()?.PRIORITY() != null;
+            int priority = int.Parse(context.priority()?.IntLiteral().GetText() ?? "-1");
+            pEvent.Priority = hasPriority ? priority : 0;
+
             // (COLON type)?
             pEvent.PayloadType = ResolveType(context.type());
 

@@ -182,6 +182,7 @@ extern "C" {
 		PRT_VALUE* trigger;
 		PRT_VALUE* payload;
 		PRT_MACHINESTATE state;
+		PRT_UINT32 priority;
 	} PRT_EVENT;
 
 	typedef struct PRT_EVENTQUEUE

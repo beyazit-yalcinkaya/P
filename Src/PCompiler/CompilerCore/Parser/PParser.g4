@@ -75,10 +75,13 @@ enumElem : name=iden ;
 numberedEnumElemList : numberedEnumElem (COMMA numberedEnumElem)* ;
 numberedEnumElem : name=iden ASSIGN value=IntLiteral ;
 
-eventDecl : EVENT name=iden cardinality? (COLON type)? SEMI;
+eventDecl : EVENT name=iden cardinality? priority? (COLON type)? SEMI
+          | EVENT name=iden priority? cardinality? (COLON type)? SEMI
+          ;
 cardinality : ASSERT IntLiteral
             | ASSUME IntLiteral
             ;
+priority : PRIORITY IntLiteral ;
 
 eventSetDecl : EVENTSET name=iden ASSIGN LBRACE eventSetLiteral RBRACE SEMI ;
 eventSetLiteral : events+=nonDefaultEvent (COMMA events+=nonDefaultEvent)* ;

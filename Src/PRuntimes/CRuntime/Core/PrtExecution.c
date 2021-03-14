@@ -350,26 +350,39 @@ PrtSendPrivate(
 		PrtResizeEventQueue(context);
 	}
 
+	const PRT_UINT32 head = queue->headIndex;
 	const PRT_UINT32 tail = queue->tailIndex;
+	const PRT_UINT32 queueLength = queue->eventsSize;
+	const PRT_UINT32 eventPriority = program->events[eventIndex]->priority;
+
+	// Find proper index in the queue
+	PRT_UINT32 index = tail;
+	PRT_UINT32 prev = (index - 1 + queueLength) % queueLength;
+	while (index != head && eventPriority > queue->events[prev].priority) {
+		queue->events[index] = queue->events[prev];
+		index = (index - 1 + queueLength) % queueLength;
+		prev = (index - 1 + queueLength) % queueLength;
+	}
 
 	//
 	// Add event to the queue
 	//
-	queue->events[tail].trigger = event;
-	queue->events[tail].payload = payload;
+	queue->events[index].trigger = event;
+	queue->events[index].payload = payload;
+	queue->events[index].priority = eventPriority;
 	if (state != NULL)
 	{
-		queue->events[tail].state = *state;
+		queue->events[index].state = *state;
 	}
 	else
 	{
-		queue->events[tail].state.machineId = 0;
-		queue->events[tail].state.machineName = NULL;
-		queue->events[tail].state.stateId = 0;
-		queue->events[tail].state.stateName = NULL;
+		queue->events[index].state.machineId = 0;
+		queue->events[index].state.machineName = NULL;
+		queue->events[index].state.stateId = 0;
+		queue->events[index].state.stateName = NULL;
 	}
 	queue->size++;
-	queue->tailIndex = (tail + 1) % queue->eventsSize;
+	queue->tailIndex = (tail + 1) % queueLength;
 
 	//
 	//Log

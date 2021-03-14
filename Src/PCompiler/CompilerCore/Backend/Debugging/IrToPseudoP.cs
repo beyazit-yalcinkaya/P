@@ -159,6 +159,8 @@ namespace Plang.Compiler.Backend.Debugging
                         pEvent.Assert,
                         " assume ",
                         pEvent.Assume,
+                        " priority ",
+                        pEvent.Priority,
                         " : ",
                         pEvent.PayloadType,
                         ";");
