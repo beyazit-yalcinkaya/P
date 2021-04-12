@@ -130,6 +130,7 @@ extern "C" {
 		PRT_UINT32 nStates; /**< The number of states                */
 		PRT_UINT32 nFuns; /**< The number of functions             */
 		PRT_UINT32 maxQueueSize; /**< The max queue size                  */
+		PRT_UINT32 priority; /**< The priority of machine                  */
 		PRT_UINT32 initStateIndex; /**< The index of initial state      */
 		PRT_VARDECL* vars; /**< The array of variable declarations  */
 		PRT_STATEDECL* states; /**< The array of state declarations     */

@@ -181,7 +181,13 @@ PrtMkMachinePrivate(
 	context->interfaceBound = interfaceName;
 
 	// Add it to the process list
-	machines[numMachines] = (PRT_MACHINEINST *)context;
+	const PRT_UINT32 machinePriority = program->machines[instanceOf]->priority;
+	PRT_UINT32 index = numMachines;
+	while (index > 0 && machinePriority < machines[index - 1]->priority) {
+		machines[index] = machines[index - 1];
+		index--;
+	}
+	machines[index] = (PRT_MACHINEINST *)context;
 	process->numMachines++;
 
 	//
@@ -189,8 +195,9 @@ PrtMkMachinePrivate(
 	//
 	context->process = (PRT_PROCESS *)process;
 	context->instanceOf = instanceOf;
+	context->priority = machinePriority;
 	PRT_MACHINEID id;
-	id.machineId = process->numMachines; // index begins with 1 since 0 is reserved
+	id.machineId = process->numMachines; // machineId begins with 1 since 0 is reserved but it is not the index anymore PrtGetMachine is updated accordingly
 	id.processId = process->guid;
 	context->id = PrtMkMachineValue(id);
 
@@ -2163,7 +2170,12 @@ PrtGetMachine(
 	//PrtAssert(PrtAreGuidsEqual(process->guid, machineId->processId), "id does not belong to process");
 	PRT_PROCESS_PRIV* privateProcess = (PRT_PROCESS_PRIV *)process;
 	PrtAssert((0 < machineId->machineId) && (machineId->machineId <= privateProcess->numMachines), "id out of bounds");
-	return privateProcess->machines[machineId->machineId - 1];
+	for (int i = 0; i < privateProcess->numMachines; i++) {
+		if (privateProcess->machines[i]->id->valueUnion.mid->machineId == machineId->machineId) {
+			return privateProcess->machines[i];
+		}
+	}
+	return NULL;
 }
 
 void PRT_CALL_CONV PrtGetMachineState(_In_ PRT_MACHINEINST* context, _Inout_ PRT_MACHINESTATE* state)

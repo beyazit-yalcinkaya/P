@@ -238,6 +238,7 @@ namespace Plang.Compiler.Backend.C
                     }
 
                     uint maxQueueSize = machine.Assert ?? uint.MaxValue;
+                    uint priority = machine.Priority ?? 0;
                     TraceSourceLine(output, declLocation);
                     context.WriteLine(output, $"PRT_MACHINEDECL {declName} = ");
                     context.WriteLine(output, "{");
@@ -250,6 +251,7 @@ namespace Plang.Compiler.Backend.C
                     context.WriteLine(output, $"{machineStatesInOrder.Length}U,");
                     context.WriteLine(output, $"{machineMethods.Count}U,");
                     context.WriteLine(output, $"{maxQueueSize}U,");
+                    context.WriteLine(output, $"{priority}U,");
                     context.WriteLine(output, $"{context.GetDeclNumber(machine.StartState)}U,");
                     context.WriteLine(output, $"{fieldArrayName},");
                     context.WriteLine(output, $"{stateArrayName},");

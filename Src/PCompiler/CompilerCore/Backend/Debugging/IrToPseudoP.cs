@@ -102,7 +102,8 @@ namespace Plang.Compiler.Backend.Debugging
                         machine);
                     string machineAssume = machine.Assume?.ToString() ?? "max";
                     string machineAssert = machine.Assert?.ToString() ?? "max";
-                    WriteStmt("  assert ", machineAssert, " assume ", machineAssume);
+                    string machinePriority = machine.Assert?.ToString() ?? "0";
+                    WriteStmt("  assert ", machineAssert, " assume ", machineAssume, " priority " , machinePriority);
                     WriteStmt("  receives ", WriteEventSet(machine.Receives));
                     WriteStmt("  sends ", WriteEventSet(machine.Sends));
                     if (machine.IsSpec)

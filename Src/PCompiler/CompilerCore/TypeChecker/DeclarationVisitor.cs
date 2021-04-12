@@ -301,6 +301,16 @@ namespace Plang.Compiler.TypeChecker
             machine.Assume = hasAssume ? (uint?)cardinality : null;
             machine.Assert = hasAssert ? (uint?)cardinality : null;
 
+            // priority?
+            bool hasPriority = context.priority()?.PRIORITY() != null;
+            long priority = int.Parse(context.priority()?.IntLiteral().GetText() ?? "-1");
+            if (priority > uint.MaxValue)
+            {
+                throw Handler.ValueOutOfRange(context.priority(), "uint32");
+            }
+
+            machine.Priority = hasPriority ? (uint?)priority : null;
+
             // receivesSends*
             foreach (PParser.ReceivesSendsContext receivesSends in context.receivesSends())
             {

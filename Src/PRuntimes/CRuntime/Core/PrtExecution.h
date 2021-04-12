@@ -82,6 +82,7 @@ extern "C" {
 	{
 		PRT_PROCESS* process; /**< The process that owns this machine.             */
 		PRT_UINT32 instanceOf; /**< Index of machine type in PRT_PROGRAMDECL.       */
+		PRT_UINT32 priority; /**< Priority of machine.       */
 		PRT_VALUE* id; /**< The id of this machine.                         */
 	} PRT_MACHINEINST;
 
@@ -218,6 +219,7 @@ extern "C" {
 		// Identity bookkeeping
 		PRT_PROCESS* process;
 		PRT_UINT32 instanceOf;
+		PRT_UINT32 priority;
 		PRT_VALUE* id;
 		PRT_RECURSIVE_MUTEX stateMachineLock;
 
