@@ -558,7 +558,7 @@ namespace Plang.Compiler.TypeChecker
 
                             state.Entry = entryOrExit.Item2;
                         }
-                        else
+                        else if (entryOrExit.Item1.Equals("EXIT"))
                         {
                             if (state.Exit != null)
                             {
@@ -567,7 +567,37 @@ namespace Plang.Compiler.TypeChecker
 
                             state.Exit = entryOrExit.Item2;
                         }
+                        else
+                        {
+                            if (state.RTAModule != null)
+                            {
+                                throw Handler.DuplicateRTAModule(stateBodyItemContext, state, state.RTAModule);
+                            }
+                            state.RTAModule = stateBodyItemContext;
+                        }
 
+                        break;
+
+                    case Tuple<string, IStateAction[]> eventDrivenRTAModule:
+                        if (state.RTAModule != null)
+                        {
+                            throw Handler.DuplicateRTAModule(stateBodyItemContext, state, state.RTAModule);
+                        }
+                        state.RTAModule = stateBodyItemContext;
+                        foreach (IStateAction action in eventDrivenRTAModule.Item2)
+                        {
+                            if (state.HasHandler(action.Trigger))
+                            {
+                                throw Handler.DuplicateEventAction(action.SourceLocation, state[action.Trigger], state);
+                            }
+
+                            if (action.Trigger.Name.Equals("null") && CurrentMachine.IsSpec)
+                            {
+                                throw Handler.NullTransitionInMonitor(action.SourceLocation, CurrentMachine);
+                            }
+
+                            state[action.Trigger] = action;
+                        }
                         break;
 
                     default:
@@ -641,6 +671,12 @@ namespace Plang.Compiler.TypeChecker
             List<PParser.DecisionModulePeriodContext> decisionPeriodContexts = decisionmoduleContext.decisionModulePeriods().decisionModulePeriod().ToList();
             List<Function> functions = CurrentScope.GetAllMethods().ToList();
 
+            List<Function> rtaControllers = new List<Function>();
+
+            List<string> rtaControllerNames = new List<string>();
+
+            Dictionary<string, int> rtaDecisionPeriods = new Dictionary<string, int>();
+
             for (int i = 0; i < controllerContexts.Count; i++)
             {
                 PParser.EventDrivenControllerContext controllerContext = controllerContexts[i];
@@ -660,6 +696,8 @@ namespace Plang.Compiler.TypeChecker
                 {
                     throw Handler.RTATypeError(controllerContext, "controller", "return", "null");
                 }
+                rtaControllers.Add(controllerFunction);
+                rtaControllerNames.Add(controllerFunName);
                 // Check if controller duplicates any previously declared controller
                 for (int j = 0; j < i; j++) {
                     PParser.EventDrivenControllerContext duplicatedControllerContext = controllerContexts[j];
@@ -703,6 +741,7 @@ namespace Plang.Compiler.TypeChecker
                         throw Handler.DuplicateDecisionPeriod(decisionmoduleContext, controllerFunName);
                     }
                 }
+                rtaDecisionPeriods.Add(controllerFunName, int.Parse(decisionPeriodContext.decisionPeriod.Text));
 
             }
 
@@ -770,34 +809,53 @@ namespace Plang.Compiler.TypeChecker
                 }
             }
 
-            Function fun;
-            fun = CreateAnonFunction(context.eventDrivenRTAModuleBody().triggers().anonEventHandler());
-
-            // TODO: is this correct?
-            fun.Role |= FunctionRole.EventHandler;
-
-            // ON eventList
             List<IStateAction> actions = new List<IStateAction>();
-            foreach (PParser.EventIdContext eventIdContext in context.eventDrivenRTAModuleBody().triggers().eventList().eventId())
+            List<PParser.TriggerContext> triggers = context.eventDrivenRTAModuleBody().trigger().ToList();
+            foreach (PParser.TriggerContext trigger in triggers)
             {
-                if (!CurrentScope.Lookup(eventIdContext.GetText(), out PEvent evt))
-                {
-                    throw Handler.MissingDeclaration(eventIdContext, "event", eventIdContext.GetText());
-                }
+                Function fun;
+                fun = CreateAnonFunction(trigger.anonEventHandler());
+                fun.Role |= FunctionRole.RTAModule;
+                fun.RTADecisionModule = decisionmoduleFunction;
+                fun.RTAControllers = rtaControllers;
+                fun.RTAControllerNames = rtaControllerNames;
+                fun.RTADecisionPeriods = rtaDecisionPeriods;
 
-                actions.Add(new EventDoAction(eventIdContext, evt, fun));
+                // ON eventList
+                foreach (PParser.EventIdContext eventIdContext in trigger.eventList().eventId())
+                {
+                    if (!CurrentScope.Lookup(eventIdContext.GetText(), out PEvent evt))
+                    {
+                        throw Handler.MissingDeclaration(eventIdContext, "event", eventIdContext.GetText());
+                    }
+                    actions.Add(new EventDoAction(eventIdContext, evt, fun));
+                }
             }
 
-            // TODO: create a new function role for rtamodule functionality, handle details in c code generator
+            Variable isFirstRun = new Variable("*isFirstRun", context, VariableRole.Field);
+            isFirstRun.Type = PrimitiveType.Bool;
+            CurrentMachine.AddField(isFirstRun);
 
-            return actions.ToArray();
+            Variable mode = new Variable("*mode", context, VariableRole.Field);
+            mode.Type = PrimitiveType.String;
+            CurrentMachine.AddField(mode);
+
+            Variable decisionPeriod = new Variable("*decisionPeriod", context, VariableRole.Field);
+            decisionPeriod.Type = PrimitiveType.Int;
+            CurrentMachine.AddField(decisionPeriod);
+
+            Variable decisionPeriodCount = new Variable("*decisionPeriodCount", context, VariableRole.Field);
+            decisionPeriodCount.Type = PrimitiveType.Int;
+            CurrentMachine.AddField(decisionPeriodCount);
+
+            return Tuple.Create("EVENTDRIVENRTAMODULE", actions.ToArray());
         }
 
         public override object VisitTimeDrivenRTAModule(PParser.TimeDrivenRTAModuleContext context)
         {
-
-            List<IStateAction> actions = new List<IStateAction>();
-            return actions.ToArray();
+            Function fun = new Function(context);
+            fun.Role |= FunctionRole.RTAModule;
+            return Tuple.Create("TIMEDRIVENRTAMODULE", fun);
         }
 
         public override object VisitStateDefer(PParser.StateDeferContext context)

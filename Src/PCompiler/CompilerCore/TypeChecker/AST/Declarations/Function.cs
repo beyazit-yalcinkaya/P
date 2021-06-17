@@ -15,7 +15,8 @@ namespace Plang.Compiler.TypeChecker.AST.Declarations
         EventHandler = 1 << 4,
         ExitHandler = 1 << 5,
         ReceiveHandler = 1 << 6,
-        Foreign = 1 << 7
+        Foreign = 1 << 7,
+        RTAModule = 1 << 8
     }
 
     public class Function : IPDecl, IHasScope
@@ -50,6 +51,11 @@ namespace Plang.Compiler.TypeChecker.AST.Declarations
 
         public string Name { get; }
         public ParserRuleContext SourceLocation { get; }
+
+        public List<Function> RTAControllers { get; set; }
+        public List<string> RTAControllerNames { get; set; }
+        public Function RTADecisionModule { get; set; }
+        public Dictionary<string, int> RTADecisionPeriods { get; set; }
 
         public void AddLocalVariable(Variable local)
         {

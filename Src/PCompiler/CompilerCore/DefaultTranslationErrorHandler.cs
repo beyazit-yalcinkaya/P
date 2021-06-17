@@ -262,6 +262,12 @@ namespace Plang.Compiler
                 $"return value is not a function name of a controller");
         }
 
+        public Exception DuplicateRTAModule(ParserRuleContext location1, State state, ParserRuleContext location2)
+        {
+            return IssueError(location1,
+                $"rtamodule in state {state.Name} duplicates rtamodule at {locationResolver.GetLocation(location2)}");
+        }
+
         public Exception InvalidBindExpr(ParserRuleContext location, string message)
         {
             return IssueError(location, $"invalid bind operation. {message}");

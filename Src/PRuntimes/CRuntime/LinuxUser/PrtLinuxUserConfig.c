@@ -115,8 +115,8 @@ void * PRT_CALL_CONV PrtMalloc(_In_ size_t size)
 
 void * PRT_CALL_CONV PrtCalloc(_In_ size_t nmemb, _In_ size_t size)
 {
-  PrtAssert(size > 0, "Size must be positive to avoid platform-specific behavior");
-  PrtAssert(nmemb > 0, "Size must be positive to avoid platform-specific behavior");
+  //PrtAssert(size > 0, "Size must be positive to avoid platform-specific behavior");
+  //PrtAssert(nmemb > 0, "Size must be positive to avoid platform-specific behavior");
 
   void *ptr = calloc(nmemb, size);
   PrtAssert(ptr != NULL, "Memory allocation error");

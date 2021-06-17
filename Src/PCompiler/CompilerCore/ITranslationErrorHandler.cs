@@ -86,6 +86,8 @@ namespace Plang.Compiler
 
         Exception ReturnValueIsNotAController(ParserRuleContext location);
 
+        Exception DuplicateRTAModule(ParserRuleContext location1, State state, ParserRuleContext location2);
+
         // module system related
         Exception InvalidBindExpr(ParserRuleContext location, string message);
 
