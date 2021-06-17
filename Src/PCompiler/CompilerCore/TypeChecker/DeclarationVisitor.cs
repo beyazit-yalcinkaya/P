@@ -632,6 +632,174 @@ namespace Plang.Compiler.TypeChecker
             return Tuple.Create("EXIT", fun);
         }
 
+        public override object VisitEventDrivenRTAModule(PParser.EventDrivenRTAModuleContext context)
+        {
+
+            List<PParser.EventDrivenControllerContext> controllerContexts = context.eventDrivenRTAModuleBody().eventDrivenController().ToList();
+            PParser.DecisionModuleContext decisionmoduleContext = context.eventDrivenRTAModuleBody().decisionModule();
+            string decisionmoduleFunName = decisionmoduleContext.funName.GetText();
+            List<PParser.DecisionModulePeriodContext> decisionPeriodContexts = decisionmoduleContext.decisionModulePeriods().decisionModulePeriod().ToList();
+            List<Function> functions = CurrentScope.GetAllMethods().ToList();
+
+            for (int i = 0; i < controllerContexts.Count; i++)
+            {
+                PParser.EventDrivenControllerContext controllerContext = controllerContexts[i];
+                // Check if controller is a function
+                string controllerFunName = controllerContext.funName.GetText();
+                if (!CurrentScope.Lookup(controllerFunName, out Function _))
+                {
+                    throw Handler.MissingDeclaration(controllerContext.funName, "function", controllerFunName);
+                }
+                // Check if parameter and return type of controller is null
+                Function controllerFunction = functions.Find(x => x.Name.Equals(controllerFunName));
+                if (!controllerFunction.Signature.ParameterTypes.ToList().Count.Equals(0))
+                {
+                    throw Handler.RTATypeError(controllerContext, "controller", "parameter", "null");
+                }
+                if (!controllerFunction.Signature.ReturnType.IsSameTypeAs(PrimitiveType.Null))
+                {
+                    throw Handler.RTATypeError(controllerContext, "controller", "return", "null");
+                }
+                // Check if controller duplicates any previously declared controller
+                for (int j = 0; j < i; j++) {
+                    PParser.EventDrivenControllerContext duplicatedControllerContext = controllerContexts[j];
+                    if (duplicatedControllerContext.funName.GetText().Equals(controllerFunName))
+                    {
+                        throw Handler.DuplicateController(controllerContext, "controller", duplicatedControllerContext);
+                    }
+                }
+                // Check if decision period of controller is defined
+                if (!decisionPeriodContexts.Exists(x => x.funName.GetText().Equals(controllerFunName)))
+                {
+                    throw Handler.ControllerDecisionPeriodNotFound(decisionmoduleContext, controllerContext);
+                }
+                // Check if decisionmodule duplicates any controller
+                if (controllerFunName.Equals(decisionmoduleFunName))
+                {
+                    throw Handler.DuplicateController(decisionmoduleContext, "decisionmodule", controllerContext);
+                }
+            }
+
+            // Check if decisionmodule is a function
+            if (!CurrentScope.Lookup(decisionmoduleFunName, out Function _))
+            {
+                throw Handler.MissingDeclaration(decisionmoduleContext.funName, "function", decisionmoduleFunName);
+            }
+
+            for (int i = 0; i < decisionPeriodContexts.Count; i++)
+            {
+                PParser.DecisionModulePeriodContext decisionPeriodContext = decisionPeriodContexts[i];
+                string controllerFunName = decisionPeriodContext.funName.GetText();
+                // Check if given controllers are declared
+                if (!controllerContexts.Exists(x => x.funName.GetText().Equals(controllerFunName)))
+                {
+                    throw Handler.MissingDeclaration(decisionPeriodContext.funName, "controller", controllerFunName);
+                }
+                // Check if decision periods of controllers are unique
+                for (int j = 0; j < i; j++)
+                {
+                    if (decisionPeriodContexts[j].funName.GetText().Equals(controllerFunName))
+                    {
+                        throw Handler.DuplicateDecisionPeriod(decisionmoduleContext, controllerFunName);
+                    }
+                }
+
+            }
+
+            Function decisionmoduleFunction = functions.Find(x => x.Name.Equals(decisionmoduleFunName));
+            // Check if parameter type of decisionmodule is null
+            if (!decisionmoduleFunction.Signature.ParameterTypes.ToList().Count.Equals(0))
+            {
+                throw Handler.RTATypeError(decisionmoduleContext, "decisionmodule", "parameter", "null");
+            }
+            // Check if return type of decisionmodule is string
+            if (!decisionmoduleFunction.Signature.ReturnType.IsSameTypeAs(PrimitiveType.String))
+            {
+                throw Handler.RTATypeError(decisionmoduleContext, "decisionmodule", "return", "string");
+            }
+
+            // Search all paths of the decisionmodule function and check return strings
+            PParser.PFunDeclContext decisionmodulefunDeclContext = (PParser.PFunDeclContext)decisionmoduleFunction.SourceLocation;
+            List<string> returnedControllerFunNames = new List<string>();
+            Stack<Antlr4.Runtime.ParserRuleContext> ruleStack = new Stack<Antlr4.Runtime.ParserRuleContext>();
+            ruleStack.Push(decisionmodulefunDeclContext.functionBody());
+            while (ruleStack.Count > 0)
+            {
+                Antlr4.Runtime.ParserRuleContext top = ruleStack.Pop();
+                if (top is PParser.ReturnStmtContext)
+                {
+                    // Check if return string is an explicit string, e.g., return "AC"
+                    if (top.GetChild(1) is not PParser.StringExprContext)
+                    {
+                        throw Handler.ImplicitControllerNameReturn(top);
+                    }
+                    PParser.StringExprContext formatedStringContext = (PParser.StringExprContext)top.GetChild(1);
+                    string controllerFunName = formatedStringContext.formatedString().StringLiteral().GetText();
+                    controllerFunName = controllerFunName.Substring(1, controllerFunName.Length - 2);
+                    // Check if return string is not a formatted string
+                    if (TypeCheckingUtils.PrintStmtNumArgs(controllerFunName) > 0)
+                    {
+                        throw Handler.ImplicitControllerNameReturn(top);
+                    }
+                    // Check if the return string is a controller
+                    if (!controllerContexts.Exists(x => x.funName.GetText().Equals(controllerFunName)))
+                    {
+                        throw Handler.ReturnValueIsNotAController(top);
+                    }
+                    returnedControllerFunNames.Add(controllerFunName);
+
+                }
+                else
+                {
+                    for (int i = 0; i < top.ChildCount; i++)
+                    {
+                        if (top.GetChild(i) is not ITerminalNode)
+                        {
+                            ruleStack.Push((Antlr4.Runtime.ParserRuleContext)top.GetChild(i));
+                        }
+                    }
+                }
+            }
+            // Check if all controllers are in at least one of the return statements of decisionmodule function
+            for (int i = 0; i < controllerContexts.Count; i++)
+            {
+                string controllerFunName = controllerContexts[i].funName.GetText();
+                if (!returnedControllerFunNames.Contains(controllerContexts[i].funName.GetText()))
+                {
+                    throw Handler.MissingControllerStringReturn(decisionmodulefunDeclContext, controllerFunName);
+                }
+            }
+
+            Function fun;
+            fun = CreateAnonFunction(context.eventDrivenRTAModuleBody().triggers().anonEventHandler());
+
+            // TODO: is this correct?
+            fun.Role |= FunctionRole.EventHandler;
+
+            // ON eventList
+            List<IStateAction> actions = new List<IStateAction>();
+            foreach (PParser.EventIdContext eventIdContext in context.eventDrivenRTAModuleBody().triggers().eventList().eventId())
+            {
+                if (!CurrentScope.Lookup(eventIdContext.GetText(), out PEvent evt))
+                {
+                    throw Handler.MissingDeclaration(eventIdContext, "event", eventIdContext.GetText());
+                }
+
+                actions.Add(new EventDoAction(eventIdContext, evt, fun));
+            }
+
+            // TODO: create a new function role for rtamodule functionality, handle details in c code generator
+
+            return actions.ToArray();
+        }
+
+        public override object VisitTimeDrivenRTAModule(PParser.TimeDrivenRTAModuleContext context)
+        {
+
+            List<IStateAction> actions = new List<IStateAction>();
+            return actions.ToArray();
+        }
+
         public override object VisitStateDefer(PParser.StateDeferContext context)
         {
             if (CurrentMachine.IsSpec)

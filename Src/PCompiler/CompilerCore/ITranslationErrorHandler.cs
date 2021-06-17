@@ -72,6 +72,20 @@ namespace Plang.Compiler
 
         Exception InvalidStringExprFormat(PParser.FormatedStringContext context, IToken symbol);
 
+        Exception DuplicateController(ParserRuleContext location1, string kind, ParserRuleContext location2);
+
+        Exception ControllerDecisionPeriodNotFound(ParserRuleContext location1, ParserRuleContext location2);
+
+        Exception DuplicateDecisionPeriod(ParserRuleContext location, string controllerFunName);
+
+        Exception RTATypeError(ParserRuleContext location, string controllerOrDecisionmodule, string errorKind, string requiredType);
+
+        Exception MissingControllerStringReturn(ParserRuleContext location, string controllerFunName);
+
+        Exception ImplicitControllerNameReturn(ParserRuleContext location);
+
+        Exception ReturnValueIsNotAController(ParserRuleContext location);
+
         // module system related
         Exception InvalidBindExpr(ParserRuleContext location, string message);
 

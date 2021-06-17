@@ -220,6 +220,48 @@ namespace Plang.Compiler
                 "String expr format placeholders must contain only digits. Escape braces by doubling them.");
         }
 
+        public Exception DuplicateController(ParserRuleContext location1, string kind, ParserRuleContext location2)
+        {
+            return IssueError(location1,
+                $"{kind} duplicates controller at {locationResolver.GetLocation(location2)}");
+        }
+
+        public Exception ControllerDecisionPeriodNotFound(ParserRuleContext location1, ParserRuleContext location2)
+        {
+            return IssueError(location1,
+                $"decision period is not defined for controller at {locationResolver.GetLocation(location2)}");
+        }
+
+        public Exception DuplicateDecisionPeriod(ParserRuleContext location, string controllerFunName)
+        {
+            return IssueError(location,
+                $"duplicate decision periods given for {controllerFunName}");
+        }
+
+        public Exception RTATypeError(ParserRuleContext location, string controllerOrDecisionmodule, string errorKind, string requiredType)
+        {
+            return IssueError(location,
+                $"{controllerOrDecisionmodule} {errorKind} type must be {requiredType}");
+        }
+
+        public Exception MissingControllerStringReturn(ParserRuleContext location, string controllerFunName)
+        {
+            return IssueError(location,
+                $"decisionmodule does not return function name of controller {controllerFunName}");
+        }
+
+        public Exception ImplicitControllerNameReturn(ParserRuleContext location)
+        {
+            return IssueError(location,
+                $"function name of controller must be returned explicitly");
+        }
+
+        public Exception ReturnValueIsNotAController(ParserRuleContext location)
+        {
+            return IssueError(location,
+                $"return value is not a function name of a controller");
+        }
+
         public Exception InvalidBindExpr(ParserRuleContext location, string message)
         {
             return IssueError(location, $"invalid bind operation. {message}");

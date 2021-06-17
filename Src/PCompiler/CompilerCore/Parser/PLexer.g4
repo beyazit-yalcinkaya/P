@@ -27,8 +27,10 @@ BREAK     : 'break' ;
 CASE      : 'case' ;
 COLD      : 'cold' ;
 CONTINUE  : 'continue' ;
+CONTROLLER : 'controller' ;
 DEFAULT   : 'default' ;
 DEFER     : 'defer' ;
+DECISIONMODULE : 'decisionmodule' ;
 DO        : 'do' ;
 ELSE      : 'else' ;
 ENTRY     : 'entry' ;
@@ -43,9 +45,12 @@ IF        : 'if' ;
 IGNORE    : 'ignore' ;
 IN        : 'in' ;
 KEYS      : 'keys' ;
+MS        : 'ms' ;
 NEW       : 'new' ;
+NS        : 'ns' ;
 OBSERVES  : 'observes' ;
 ON        : 'on' ;
+PERIOD    : 'period' ;
 POP       : 'pop' ;
 PRINT     : 'print' ;
 PRIORITY  : 'priority' ;
@@ -53,6 +58,8 @@ PUSH      : 'push' ;
 RAISE     : 'raise' ;
 RECEIVE   : 'receive' ;
 RETURN    : 'return' ;
+RTAMODULE : 'rtamodule' ;
+S         : 's' ;
 SEND      : 'send' ;
 SIZEOF    : 'sizeof' ;
 SPEC      : 'spec' ;
@@ -140,6 +147,8 @@ SEMI   : ';' ;
 COMMA  : ',' ;
 DOT    : '.' ;
 COLON  : ':' ;
+
+AT     : '@' ;
 
 // Identifiers
 

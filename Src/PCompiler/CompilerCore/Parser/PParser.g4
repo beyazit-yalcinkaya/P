@@ -130,7 +130,28 @@ stateBodyItem : ENTRY anonEventHandler       # StateEntry
               | ON eventList GOTO stateName SEMI  # OnEventGotoState
               | ON eventList GOTO stateName WITH anonEventHandler  # OnEventGotoState
               | ON eventList GOTO stateName WITH funName=iden SEMI # OnEventGotoState
+              | RTAMODULE eventDrivenRTAModuleBody # EventDrivenRTAModule
+              | RTAMODULE timeDrivenRTAModuleBody # TimeDrivenRTAModule
               ;
+
+eventDrivenRTAModuleBody : LBRACE eventDrivenController eventDrivenController* decisionModule triggers RBRACE ;
+timeDrivenRTAModuleBody : LBRACE timeDrivenController timeDrivenController* decisionModule RBRACE ;
+
+eventDrivenController : CONTROLLER funName=iden SEMI ;
+timeDrivenController : CONTROLLER funName=iden PERIOD period SEMI ;
+
+triggers : ON eventList SEMI
+         | ON eventList DO funName=iden SEMI
+         | ON eventList DO anonEventHandler
+         ;
+
+period : IntLiteral timeUnit ;
+
+timeUnit : NS | MS | S ;
+
+decisionModule : DECISIONMODULE funName=iden AT decisionModulePeriods SEMI ;
+decisionModulePeriods : LBRACE decisionModulePeriod (COMMA decisionModulePeriod)* RBRACE ;
+decisionModulePeriod : funName=iden COLON IntLiteral ;
 
 nonDefaultEventList : events+=nonDefaultEvent (COMMA events+=nonDefaultEvent)* ;
 nonDefaultEvent : HALT | iden ;
