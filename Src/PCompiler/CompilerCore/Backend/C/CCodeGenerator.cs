@@ -322,6 +322,8 @@ namespace Plang.Compiler.Backend.C
                         : $"&{context.Names.GetNameForDecl(state.Entry)}";
                     string stateExitFunName =
                         state.Exit == null ? "&_P_NO_OP" : $"&{context.Names.GetNameForDecl(state.Exit)}";
+                    string stateRTAModuleFunName =
+                        state.TimeDrivenRTAModule == null ? "&_P_NO_OP" : $"&{context.Names.GetNameForDecl(state.TimeDrivenRTAModule)}";
 
                     int stateIndex = context.GetDeclNumber(state);
                     CTranslationUtils.StateActionResults stateData =
@@ -382,6 +384,8 @@ namespace Plang.Compiler.Backend.C
                     context.WriteLine(output, $"{dosArrName}, \\");
                     context.WriteLine(output, $"{stateEntryFunName}, \\");
                     context.WriteLine(output, $"{stateExitFunName}, \\");
+                    context.WriteLine(output, $"{stateRTAModuleFunName}, \\");
+                    context.WriteLine(output, $"{0}, \\");
                     context.WriteLine(output, "}");
                     break;
 

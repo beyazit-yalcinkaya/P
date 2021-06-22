@@ -67,6 +67,7 @@ START     : 'start' ;
 STATE     : 'state' ;
 THIS      : 'this' ;
 TYPE      : 'type' ;
+US        : 'us' ;
 VALUES    : 'values' ;
 VAR       : 'var' ;
 WHILE     : 'while' ;

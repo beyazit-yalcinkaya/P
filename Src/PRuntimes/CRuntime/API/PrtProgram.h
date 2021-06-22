@@ -116,6 +116,8 @@ extern "C" {
 		PRT_DODECL* dos; /**< The array of installed actions                     */
 		PRT_FUNDECL* entryFun; /**< The entry function in owner machine       */
 		PRT_FUNDECL* exitFun; /**< The exit function in owner machine        */
+		PRT_FUNDECL* timeDrivenRTAModuleFun; /**< The rtamodule function in owner machine        */
+		PRT_UINT64 periodStart; /**< The rtamodule function in owner machine        */
 	} PRT_STATEDECL;
 
 	/** Represents a P machine declaration */

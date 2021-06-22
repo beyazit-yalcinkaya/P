@@ -1,5 +1,6 @@
 #include "PrtExecution.h"
 #include "libhandler.h"
+#include <time.h>
 
 // Can only run one P program at a time
 PRT_PROGRAMDECL* program;
@@ -852,6 +853,73 @@ PRT_BOOLEAN PrtCallExitHandler(PRT_MACHINEINST_PRIV* context)
 	return PrtCallEventHandler(context, exitFun->implementation, NULL);
 }
 
+PRT_BOOLEAN PrtCallRTAModule(PRT_MACHINEINST_PRIV* context)
+{
+
+	PRT_STATEDECL* currentState = PrtGetCurrentStateDecl(context);
+	PRT_FUNDECL* timeDrivenRTAModuleFun = currentState->timeDrivenRTAModuleFun;
+	return PrtCallEventHandler(context, timeDrivenRTAModuleFun->implementation, &context->handlerArguments);
+}
+
+PRT_BOOLEAN PrtCheckRTAModulePeriod(PRT_MACHINEINST_PRIV* context)
+{
+
+	PRT_MACHINESTATE state;
+	PrtGetMachineState((PRT_MACHINEINST*)context, &state);
+
+	PRT_STATEDECL* currentState = PrtGetCurrentStateDecl(context);
+	if (currentState->timeDrivenRTAModuleFun != &_P_NO_OP) {
+		PRT_MACHINEDECL* machine = program->machines[context->instanceOf];
+		PRT_VARDECL temp = machine->vars[0];
+		PRT_VALUE* period = NULL;
+		PRT_VALUE* periodUnit = NULL;
+		for (int i = 0; i < machine->nVars; i++) {
+			if (machine->vars[i].name == "*period") {
+				period = context->varValues[i];
+			} else if (machine->vars[i].name == "*periodUnit") {
+				periodUnit = context->varValues[i];
+			}
+			if (period != NULL && periodUnit != NULL) {
+				break;
+			}
+		}
+
+		uint64_t period_ns = PrtPrimGetInt(period);
+		switch (PrtPrimGetInt(periodUnit)) {
+			case 9:
+				period_ns *= 1000000000;
+				break;
+			case 6:
+				period_ns *= 1000000;
+				break;
+			case 3:
+				period_ns *= 1000;
+				break;
+			case 0:
+				period_ns *= 1;
+				break;
+		}
+
+		long int ns;
+		time_t sec;
+		struct timespec spec;
+
+		clock_gettime(CLOCK_REALTIME, &spec);
+		sec = spec.tv_sec;
+		ns = spec.tv_nsec;
+
+		uint64_t periodEnd = (uint64_t) sec * 1000000000L + (uint64_t) ns;
+
+		uint64_t timePassed = periodEnd - currentState->periodStart;
+
+		if (timePassed >= period_ns) {
+			currentState->periodStart = periodEnd;
+			return PRT_TRUE;
+		}
+	}
+	return PRT_FALSE;
+}
+
 PRT_BOOLEAN PrtCallTransitionHandler(PRT_MACHINEINST_PRIV* context)
 {
 	const PRT_UINT32 trans_index = PrtFindTransition(context, PrtPrimGetEvent(context->currentTrigger));
@@ -934,7 +1002,6 @@ PrtStepStateMachine(
 )
 {
 	PrtAssert(context->isRunning, "The caller should have set context->isRunning to TRUE");
-
 	switch (context->operation)
 	{
 	case StateEntry:
@@ -1055,7 +1122,17 @@ PrtStepProcess(PRT_PROCESS* process)
 			{
 				context->isRunning = PRT_TRUE;
 				PrtUnlockMutex(context->stateMachineLock);
-				hasMoreWork |= PrtStepStateMachine(context);
+				PRT_STATEDECL* currentState = PrtGetCurrentStateDecl(context);
+				if (currentState->timeDrivenRTAModuleFun != &_P_NO_OP) {
+					if (context->operation == DequeueOrReceive && PrtCheckRTAModulePeriod(context)) {
+						PrtCallRTAModule(context);
+					} else {
+						PrtStepStateMachine(context);
+					}
+					hasMoreWork |= PRT_TRUE;
+				} else {
+					hasMoreWork |= PrtStepStateMachine(context);
+				}
 
 				PrtLockMutex(context->stateMachineLock);
 				context->isRunning = PRT_FALSE;

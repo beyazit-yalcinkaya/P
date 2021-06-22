@@ -558,7 +558,7 @@ namespace Plang.Compiler.TypeChecker
 
                             state.Entry = entryOrExit.Item2;
                         }
-                        else if (entryOrExit.Item1.Equals("EXIT"))
+                        else
                         {
                             if (state.Exit != null)
                             {
@@ -567,23 +567,15 @@ namespace Plang.Compiler.TypeChecker
 
                             state.Exit = entryOrExit.Item2;
                         }
-                        else
-                        {
-                            if (state.RTAModule != null)
-                            {
-                                throw Handler.DuplicateRTAModule(stateBodyItemContext, state, state.RTAModule);
-                            }
-                            state.RTAModule = stateBodyItemContext;
-                        }
 
                         break;
 
-                    case Tuple<string, IStateAction[]> eventDrivenRTAModule:
+                    case Tuple<PParser.EventDrivenRTAModuleContext, IStateAction[]> eventDrivenRTAModule:
                         if (state.RTAModule != null)
                         {
                             throw Handler.DuplicateRTAModule(stateBodyItemContext, state, state.RTAModule);
                         }
-                        state.RTAModule = stateBodyItemContext;
+                        state.RTAModule = eventDrivenRTAModule.Item1;
                         foreach (IStateAction action in eventDrivenRTAModule.Item2)
                         {
                             if (state.HasHandler(action.Trigger))
@@ -598,6 +590,15 @@ namespace Plang.Compiler.TypeChecker
 
                             state[action.Trigger] = action;
                         }
+                        break;
+
+                    case Tuple<PParser.TimeDrivenRTAModuleContext, Function> timeDrivenRTAModule:
+                        if (state.RTAModule != null)
+                        {
+                            throw Handler.DuplicateRTAModule(stateBodyItemContext, state, state.RTAModule);
+                        }
+                        state.RTAModule = timeDrivenRTAModule.Item1;
+                        state.TimeDrivenRTAModule = timeDrivenRTAModule.Item2;
                         break;
 
                     default:
@@ -813,13 +814,50 @@ namespace Plang.Compiler.TypeChecker
             List<PParser.TriggerContext> triggers = context.eventDrivenRTAModuleBody().trigger().ToList();
             foreach (PParser.TriggerContext trigger in triggers)
             {
-                Function fun;
-                fun = CreateAnonFunction(trigger.anonEventHandler());
+                Function eventHandler;
+                if (trigger.anonEventHandler() != null)
+                {
+                    eventHandler = CreateAnonFunction(trigger.anonEventHandler());
+                    eventHandler.Role = FunctionRole.EntryHandler;
+                }
+                else if (trigger.funName != null)
+                {
+                    string funName = trigger.funName.GetText();
+                    if (!CurrentScope.Lookup(funName, out eventHandler))
+                    {
+                        throw Handler.MissingDeclaration(trigger.funName, "function", funName);
+                    }
+                    eventHandler.Role |= FunctionRole.EntryHandler;
+                }
+                else
+                {
+                    eventHandler = null;
+                }
+
+                Function fun = new Function(context)
+                {
+                    Owner = CurrentMachine,
+                    Scope = CurrentScope.MakeChildScope()
+                };
+                CurrentMachine.AddMethod(fun);
+
+                if (eventHandler != null && eventHandler.Signature.Parameters.Count > 0)
+                {
+                    Variable eventHandlerParam = eventHandler.Signature.Parameters[0];
+                    Variable param = fun.Scope.Put(eventHandlerParam.Name, context, VariableRole.Param);
+                    param.Type = eventHandlerParam.Type;
+                    nodesToDeclarations.Put(context, param);
+                    fun.Signature.Parameters.Add(param);
+                }
+
+                nodesToDeclarations.Put(context, fun);
+
                 fun.Role |= FunctionRole.RTAModule;
                 fun.RTADecisionModule = decisionmoduleFunction;
                 fun.RTAControllers = rtaControllers;
                 fun.RTAControllerNames = rtaControllerNames;
                 fun.RTADecisionPeriods = rtaDecisionPeriods;
+                fun.RTAEventHandler = eventHandler;
 
                 // ON eventList
                 foreach (PParser.EventIdContext eventIdContext in trigger.eventList().eventId())
@@ -832,9 +870,9 @@ namespace Plang.Compiler.TypeChecker
                 }
             }
 
-            Variable isFirstRun = new Variable("*isFirstRun", context, VariableRole.Field);
-            isFirstRun.Type = PrimitiveType.Bool;
-            CurrentMachine.AddField(isFirstRun);
+            Variable isStarted = new Variable("*isStarted", context, VariableRole.Field);
+            isStarted.Type = PrimitiveType.Bool;
+            CurrentMachine.AddField(isStarted);
 
             Variable mode = new Variable("*mode", context, VariableRole.Field);
             mode.Type = PrimitiveType.String;
@@ -848,14 +886,219 @@ namespace Plang.Compiler.TypeChecker
             decisionPeriodCount.Type = PrimitiveType.Int;
             CurrentMachine.AddField(decisionPeriodCount);
 
-            return Tuple.Create("EVENTDRIVENRTAMODULE", actions.ToArray());
+            return Tuple.Create(context, actions.ToArray());
         }
 
         public override object VisitTimeDrivenRTAModule(PParser.TimeDrivenRTAModuleContext context)
         {
-            Function fun = new Function(context);
+
+            List<PParser.TimeDrivenControllerContext> controllerContexts = context.timeDrivenRTAModuleBody().timeDrivenController().ToList();
+            PParser.DecisionModuleContext decisionmoduleContext = context.timeDrivenRTAModuleBody().decisionModule();
+            string decisionmoduleFunName = decisionmoduleContext.funName.GetText();
+            List<PParser.DecisionModulePeriodContext> decisionPeriodContexts = decisionmoduleContext.decisionModulePeriods().decisionModulePeriod().ToList();
+            List<Function> functions = CurrentScope.GetAllMethods().ToList();
+
+            List<Function> rtaControllers = new List<Function>();
+
+            List<string> rtaControllerNames = new List<string>();
+
+            Dictionary<string, int> rtaDecisionPeriods = new Dictionary<string, int>();
+
+            Dictionary<string, Tuple<int, int>> rtaControllerPeriods = new Dictionary<string, Tuple<int, int>>();
+
+            for (int i = 0; i < controllerContexts.Count; i++)
+            {
+                PParser.TimeDrivenControllerContext controllerContext = controllerContexts[i];
+                // Check if controller is a function
+                string controllerFunName = controllerContext.funName.GetText();
+                if (!CurrentScope.Lookup(controllerFunName, out Function _))
+                {
+                    throw Handler.MissingDeclaration(controllerContext.funName, "function", controllerFunName);
+                }
+                // Check if parameter and return type of controller is null
+                Function controllerFunction = functions.Find(x => x.Name.Equals(controllerFunName));
+                if (!controllerFunction.Signature.ParameterTypes.ToList().Count.Equals(0))
+                {
+                    throw Handler.RTATypeError(controllerContext, "controller", "parameter", "null");
+                }
+                if (!controllerFunction.Signature.ReturnType.IsSameTypeAs(PrimitiveType.Null))
+                {
+                    throw Handler.RTATypeError(controllerContext, "controller", "return", "null");
+                }
+                rtaControllers.Add(controllerFunction);
+                rtaControllerNames.Add(controllerFunName);
+                //Console.WriteLine(controllerContext.period().timeUnit().GetText());
+                string timeUnit = controllerContext.period().timeUnit().GetText();
+                if (timeUnit.Equals("s"))
+                {
+                    rtaControllerPeriods.Add(controllerFunName, Tuple.Create(int.Parse(controllerContext.period().IntLiteral().GetText()), 9));
+                }
+                else if (timeUnit.Equals("ms"))
+                {
+                    rtaControllerPeriods.Add(controllerFunName, Tuple.Create(int.Parse(controllerContext.period().IntLiteral().GetText()), 6));
+                }
+                else if (timeUnit.Equals("us"))
+                {
+                    rtaControllerPeriods.Add(controllerFunName, Tuple.Create(int.Parse(controllerContext.period().IntLiteral().GetText()), 3));
+                }
+                else if (timeUnit.Equals("ns"))
+                {
+                    rtaControllerPeriods.Add(controllerFunName, Tuple.Create(int.Parse(controllerContext.period().IntLiteral().GetText()), 0));
+                }
+                // Check if controller duplicates any previously declared controller
+                for (int j = 0; j < i; j++)
+                {
+                    PParser.TimeDrivenControllerContext duplicatedControllerContext = controllerContexts[j];
+                    if (duplicatedControllerContext.funName.GetText().Equals(controllerFunName))
+                    {
+                        throw Handler.DuplicateController(controllerContext, "controller", duplicatedControllerContext);
+                    }
+                }
+                // Check if decision period of controller is defined
+                if (!decisionPeriodContexts.Exists(x => x.funName.GetText().Equals(controllerFunName)))
+                {
+                    throw Handler.ControllerDecisionPeriodNotFound(decisionmoduleContext, controllerContext);
+                }
+                // Check if decisionmodule duplicates any controller
+                if (controllerFunName.Equals(decisionmoduleFunName))
+                {
+                    throw Handler.DuplicateController(decisionmoduleContext, "decisionmodule", controllerContext);
+                }
+            }
+
+            // Check if decisionmodule is a function
+            if (!CurrentScope.Lookup(decisionmoduleFunName, out Function _))
+            {
+                throw Handler.MissingDeclaration(decisionmoduleContext.funName, "function", decisionmoduleFunName);
+            }
+
+            for (int i = 0; i < decisionPeriodContexts.Count; i++)
+            {
+                PParser.DecisionModulePeriodContext decisionPeriodContext = decisionPeriodContexts[i];
+                string controllerFunName = decisionPeriodContext.funName.GetText();
+                // Check if given controllers are declared
+                if (!controllerContexts.Exists(x => x.funName.GetText().Equals(controllerFunName)))
+                {
+                    throw Handler.MissingDeclaration(decisionPeriodContext.funName, "controller", controllerFunName);
+                }
+                // Check if decision periods of controllers are unique
+                for (int j = 0; j < i; j++)
+                {
+                    if (decisionPeriodContexts[j].funName.GetText().Equals(controllerFunName))
+                    {
+                        throw Handler.DuplicateDecisionPeriod(decisionmoduleContext, controllerFunName);
+                    }
+                }
+                rtaDecisionPeriods.Add(controllerFunName, int.Parse(decisionPeriodContext.decisionPeriod.Text));
+
+            }
+
+            Function decisionmoduleFunction = functions.Find(x => x.Name.Equals(decisionmoduleFunName));
+            // Check if parameter type of decisionmodule is null
+            if (!decisionmoduleFunction.Signature.ParameterTypes.ToList().Count.Equals(0))
+            {
+                throw Handler.RTATypeError(decisionmoduleContext, "decisionmodule", "parameter", "null");
+            }
+            // Check if return type of decisionmodule is string
+            if (!decisionmoduleFunction.Signature.ReturnType.IsSameTypeAs(PrimitiveType.String))
+            {
+                throw Handler.RTATypeError(decisionmoduleContext, "decisionmodule", "return", "string");
+            }
+
+            // Search all paths of the decisionmodule function and check return strings
+            PParser.PFunDeclContext decisionmodulefunDeclContext = (PParser.PFunDeclContext)decisionmoduleFunction.SourceLocation;
+            List<string> returnedControllerFunNames = new List<string>();
+            Stack<Antlr4.Runtime.ParserRuleContext> ruleStack = new Stack<Antlr4.Runtime.ParserRuleContext>();
+            ruleStack.Push(decisionmodulefunDeclContext.functionBody());
+            while (ruleStack.Count > 0)
+            {
+                Antlr4.Runtime.ParserRuleContext top = ruleStack.Pop();
+                if (top is PParser.ReturnStmtContext)
+                {
+                    // Check if return string is an explicit string, e.g., return "AC"
+                    if (top.GetChild(1) is not PParser.StringExprContext)
+                    {
+                        throw Handler.ImplicitControllerNameReturn(top);
+                    }
+                    PParser.StringExprContext formatedStringContext = (PParser.StringExprContext)top.GetChild(1);
+                    string controllerFunName = formatedStringContext.formatedString().StringLiteral().GetText();
+                    controllerFunName = controllerFunName.Substring(1, controllerFunName.Length - 2);
+                    // Check if return string is not a formatted string
+                    if (TypeCheckingUtils.PrintStmtNumArgs(controllerFunName) > 0)
+                    {
+                        throw Handler.ImplicitControllerNameReturn(top);
+                    }
+                    // Check if the return string is a controller
+                    if (!controllerContexts.Exists(x => x.funName.GetText().Equals(controllerFunName)))
+                    {
+                        throw Handler.ReturnValueIsNotAController(top);
+                    }
+                    returnedControllerFunNames.Add(controllerFunName);
+
+                }
+                else
+                {
+                    for (int i = 0; i < top.ChildCount; i++)
+                    {
+                        if (top.GetChild(i) is not ITerminalNode)
+                        {
+                            ruleStack.Push((Antlr4.Runtime.ParserRuleContext)top.GetChild(i));
+                        }
+                    }
+                }
+            }
+            // Check if all controllers are in at least one of the return statements of decisionmodule function
+            for (int i = 0; i < controllerContexts.Count; i++)
+            {
+                string controllerFunName = controllerContexts[i].funName.GetText();
+                if (!returnedControllerFunNames.Contains(controllerContexts[i].funName.GetText()))
+                {
+                    throw Handler.MissingControllerStringReturn(decisionmodulefunDeclContext, controllerFunName);
+                }
+            }
+
+
+            Function fun = new Function(context)
+            {
+                Owner = CurrentMachine,
+                Scope = CurrentScope.MakeChildScope()
+            };
+            CurrentMachine.AddMethod(fun);
+            nodesToDeclarations.Put(context, fun);
+
             fun.Role |= FunctionRole.RTAModule;
-            return Tuple.Create("TIMEDRIVENRTAMODULE", fun);
+            fun.RTADecisionModule = decisionmoduleFunction;
+            fun.RTAControllers = rtaControllers;
+            fun.RTAControllerNames = rtaControllerNames;
+            fun.RTAControllerPeriods = rtaControllerPeriods;
+            fun.RTADecisionPeriods = rtaDecisionPeriods;
+
+            Variable isStarted = new Variable("*isStarted", context, VariableRole.Field);
+            isStarted.Type = PrimitiveType.Bool;
+            CurrentMachine.AddField(isStarted);
+
+            Variable mode = new Variable("*mode", context, VariableRole.Field);
+            mode.Type = PrimitiveType.String;
+            CurrentMachine.AddField(mode);
+
+            Variable decisionPeriod = new Variable("*decisionPeriod", context, VariableRole.Field);
+            decisionPeriod.Type = PrimitiveType.Int;
+            CurrentMachine.AddField(decisionPeriod);
+
+            Variable decisionPeriodCount = new Variable("*decisionPeriodCount", context, VariableRole.Field);
+            decisionPeriodCount.Type = PrimitiveType.Int;
+            CurrentMachine.AddField(decisionPeriodCount);
+
+            Variable period = new Variable("*period", context, VariableRole.Field);
+            period.Type = PrimitiveType.Int;
+            CurrentMachine.AddField(period);
+
+            Variable periodUnit = new Variable("*periodUnit", context, VariableRole.Field);
+            periodUnit.Type = PrimitiveType.Int;
+            CurrentMachine.AddField(periodUnit);
+
+            List<IStateAction> actions = new List<IStateAction>();
+            return Tuple.Create(context, fun);
         }
 
         public override object VisitStateDefer(PParser.StateDeferContext context)

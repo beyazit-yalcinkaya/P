@@ -56,6 +56,9 @@ namespace Plang.Compiler.TypeChecker.AST.Declarations
         public List<string> RTAControllerNames { get; set; }
         public Function RTADecisionModule { get; set; }
         public Dictionary<string, int> RTADecisionPeriods { get; set; }
+        public Dictionary<string, Tuple<int, int>> RTAControllerPeriods { get; set; }
+
+        public Function RTAEventHandler { get; set; }
 
         public void AddLocalVariable(Variable local)
         {

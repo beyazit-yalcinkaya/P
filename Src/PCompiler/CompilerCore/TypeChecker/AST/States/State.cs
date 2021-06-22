@@ -19,7 +19,8 @@ namespace Plang.Compiler.TypeChecker.AST.States
         public StateTemperature Temperature { get; set; }
 
         public bool IsStart { get; set; }
-        public ParserRuleContext RTAModule { get; set; }
+        public ParserRuleContext RTAModule{ get; set; }
+        public Function TimeDrivenRTAModule { get; set; }
         public Function Entry { get; set; }
         public IEnumerable<KeyValuePair<PEvent, IStateAction>> AllEventHandlers => actions;
 
