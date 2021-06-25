@@ -35,6 +35,13 @@ namespace Plang.Compiler.TypeChecker.AST.Declarations
         public IEventSet Observes { get; set; }
         public PLanguageType PayloadType { get; set; } = PrimitiveType.Null;
 
+        public Variable isStartedVar { get; set; }
+        public Variable modeVar { get; set; }
+        public Variable decisionPeriodVar { get; set; }
+        public Variable decisionPeriodCountVar { get; set; }
+        public Variable periodVar { get; set; }
+        public Variable periodUnitVar { get; set; }
+
         public Scope Scope { get; set; }
         public ParserRuleContext SourceLocation { get; }
         public string Name { get; }

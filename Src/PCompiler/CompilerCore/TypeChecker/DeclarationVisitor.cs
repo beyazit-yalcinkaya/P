@@ -769,7 +769,7 @@ namespace Plang.Compiler.TypeChecker
                 if (top is PParser.ReturnStmtContext)
                 {
                     // Check if return string is an explicit string, e.g., return "AC"
-                    if (top.GetChild(1) is not PParser.StringExprContext)
+                    if (!(top.GetChild(1) is PParser.StringExprContext))
                     {
                         throw Handler.ImplicitControllerNameReturn(top);
                     }
@@ -793,7 +793,7 @@ namespace Plang.Compiler.TypeChecker
                 {
                     for (int i = 0; i < top.ChildCount; i++)
                     {
-                        if (top.GetChild(i) is not ITerminalNode)
+                        if (!(top.GetChild(i) is ITerminalNode))
                         {
                             ruleStack.Push((Antlr4.Runtime.ParserRuleContext)top.GetChild(i));
                         }
@@ -815,12 +815,7 @@ namespace Plang.Compiler.TypeChecker
             foreach (PParser.TriggerContext trigger in triggers)
             {
                 Function eventHandler;
-                if (trigger.anonEventHandler() != null)
-                {
-                    eventHandler = CreateAnonFunction(trigger.anonEventHandler());
-                    eventHandler.Role = FunctionRole.EntryHandler;
-                }
-                else if (trigger.funName != null)
+                if (trigger.funName != null)
                 {
                     string funName = trigger.funName.GetText();
                     if (!CurrentScope.Lookup(funName, out eventHandler))
@@ -870,21 +865,37 @@ namespace Plang.Compiler.TypeChecker
                 }
             }
 
-            Variable isStarted = new Variable("*isStarted", context, VariableRole.Field);
-            isStarted.Type = PrimitiveType.Bool;
-            CurrentMachine.AddField(isStarted);
+            if (CurrentMachine.isStartedVar == null)
+            {
+                Variable isStarted = new Variable("", context, VariableRole.Field);
+                isStarted.Type = PrimitiveType.Bool;
+                CurrentMachine.AddField(isStarted);
+                CurrentMachine.isStartedVar = isStarted;
+            }
 
-            Variable mode = new Variable("*mode", context, VariableRole.Field);
-            mode.Type = PrimitiveType.String;
-            CurrentMachine.AddField(mode);
+            if (CurrentMachine.modeVar == null)
+            {
+                Variable mode = new Variable("", context, VariableRole.Field);
+                mode.Type = PrimitiveType.String;
+                CurrentMachine.AddField(mode);
+                CurrentMachine.modeVar = mode;
+            }
 
-            Variable decisionPeriod = new Variable("*decisionPeriod", context, VariableRole.Field);
-            decisionPeriod.Type = PrimitiveType.Int;
-            CurrentMachine.AddField(decisionPeriod);
+            if (CurrentMachine.decisionPeriodVar == null)
+            {
+                Variable decisionPeriod = new Variable("", context, VariableRole.Field);
+                decisionPeriod.Type = PrimitiveType.Int;
+                CurrentMachine.AddField(decisionPeriod);
+                CurrentMachine.decisionPeriodVar = decisionPeriod;
+            }
 
-            Variable decisionPeriodCount = new Variable("*decisionPeriodCount", context, VariableRole.Field);
-            decisionPeriodCount.Type = PrimitiveType.Int;
-            CurrentMachine.AddField(decisionPeriodCount);
+            if (CurrentMachine.decisionPeriodCountVar == null)
+            {
+                Variable decisionPeriodCount = new Variable("", context, VariableRole.Field);
+                decisionPeriodCount.Type = PrimitiveType.Int;
+                CurrentMachine.AddField(decisionPeriodCount);
+                CurrentMachine.decisionPeriodCountVar = decisionPeriodCount;
+            }
 
             return Tuple.Create(context, actions.ToArray());
         }
@@ -1016,7 +1027,7 @@ namespace Plang.Compiler.TypeChecker
                 if (top is PParser.ReturnStmtContext)
                 {
                     // Check if return string is an explicit string, e.g., return "AC"
-                    if (top.GetChild(1) is not PParser.StringExprContext)
+                    if (!(top.GetChild(1) is PParser.StringExprContext))
                     {
                         throw Handler.ImplicitControllerNameReturn(top);
                     }
@@ -1040,7 +1051,7 @@ namespace Plang.Compiler.TypeChecker
                 {
                     for (int i = 0; i < top.ChildCount; i++)
                     {
-                        if (top.GetChild(i) is not ITerminalNode)
+                        if (!(top.GetChild(i) is ITerminalNode))
                         {
                             ruleStack.Push((Antlr4.Runtime.ParserRuleContext)top.GetChild(i));
                         }
@@ -1073,29 +1084,53 @@ namespace Plang.Compiler.TypeChecker
             fun.RTAControllerPeriods = rtaControllerPeriods;
             fun.RTADecisionPeriods = rtaDecisionPeriods;
 
-            Variable isStarted = new Variable("*isStarted", context, VariableRole.Field);
-            isStarted.Type = PrimitiveType.Bool;
-            CurrentMachine.AddField(isStarted);
+            if (CurrentMachine.isStartedVar == null)
+            {
+                Variable isStarted = new Variable("", context, VariableRole.Field);
+                isStarted.Type = PrimitiveType.Bool;
+                CurrentMachine.AddField(isStarted);
+                CurrentMachine.isStartedVar = isStarted;
+            }
 
-            Variable mode = new Variable("*mode", context, VariableRole.Field);
-            mode.Type = PrimitiveType.String;
-            CurrentMachine.AddField(mode);
+            if (CurrentMachine.modeVar == null)
+            {
+                Variable mode = new Variable("", context, VariableRole.Field);
+                mode.Type = PrimitiveType.String;
+                CurrentMachine.AddField(mode);
+                CurrentMachine.modeVar = mode;
+            }
 
-            Variable decisionPeriod = new Variable("*decisionPeriod", context, VariableRole.Field);
-            decisionPeriod.Type = PrimitiveType.Int;
-            CurrentMachine.AddField(decisionPeriod);
+            if (CurrentMachine.decisionPeriodVar == null)
+            {
+                Variable decisionPeriod = new Variable("", context, VariableRole.Field);
+                decisionPeriod.Type = PrimitiveType.Int;
+                CurrentMachine.AddField(decisionPeriod);
+                CurrentMachine.decisionPeriodVar = decisionPeriod;
+            }
 
-            Variable decisionPeriodCount = new Variable("*decisionPeriodCount", context, VariableRole.Field);
-            decisionPeriodCount.Type = PrimitiveType.Int;
-            CurrentMachine.AddField(decisionPeriodCount);
+            if (CurrentMachine.decisionPeriodCountVar == null)
+            {
+                Variable decisionPeriodCount = new Variable("", context, VariableRole.Field);
+                decisionPeriodCount.Type = PrimitiveType.Int;
+                CurrentMachine.AddField(decisionPeriodCount);
+                CurrentMachine.decisionPeriodCountVar = decisionPeriodCount;
+            }
 
-            Variable period = new Variable("*period", context, VariableRole.Field);
-            period.Type = PrimitiveType.Int;
-            CurrentMachine.AddField(period);
+            if (CurrentMachine.periodVar == null)
+            {
+                Variable period = new Variable("", context, VariableRole.Field);
+                period.Type = PrimitiveType.Int;
+                CurrentMachine.AddField(period);
+                CurrentMachine.periodVar = period;
+            }
 
-            Variable periodUnit = new Variable("*periodUnit", context, VariableRole.Field);
-            periodUnit.Type = PrimitiveType.Int;
-            CurrentMachine.AddField(periodUnit);
+            if (CurrentMachine.periodUnitVar == null)
+            {
+                Variable periodUnit = new Variable("", context, VariableRole.Field);
+                periodUnit.Type = PrimitiveType.Int;
+                CurrentMachine.AddField(periodUnit);
+                CurrentMachine.periodUnitVar = periodUnit;
+            }
 
             List<IStateAction> actions = new List<IStateAction>();
             return Tuple.Create(context, fun);

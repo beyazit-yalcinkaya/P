@@ -871,18 +871,8 @@ PRT_BOOLEAN PrtCheckRTAModulePeriod(PRT_MACHINEINST_PRIV* context)
 	if (currentState->timeDrivenRTAModuleFun != &_P_NO_OP) {
 		PRT_MACHINEDECL* machine = program->machines[context->instanceOf];
 		PRT_VARDECL temp = machine->vars[0];
-		PRT_VALUE* period = NULL;
-		PRT_VALUE* periodUnit = NULL;
-		for (int i = 0; i < machine->nVars; i++) {
-			if (machine->vars[i].name == "*period") {
-				period = context->varValues[i];
-			} else if (machine->vars[i].name == "*periodUnit") {
-				periodUnit = context->varValues[i];
-			}
-			if (period != NULL && periodUnit != NULL) {
-				break;
-			}
-		}
+		PRT_VALUE* period = context->varValues[machine->nVars - 2];
+		PRT_VALUE* periodUnit = context->varValues[machine->nVars - 1];
 
 		uint64_t period_ns = PrtPrimGetInt(period);
 		switch (PrtPrimGetInt(periodUnit)) {
@@ -988,6 +978,18 @@ PrtDequeueOrReceive(_Inout_ PRT_MACHINEINST_PRIV* context, PRT_VALUE* trigger, P
 	{
 		PrtSetTriggerPayload(context, trigger, payload);
 		context->operation = HandleCurrentEvent;
+
+		const PRT_UINT32 eventValue = PrtPrimGetEvent(context->currentTrigger);
+
+		if (PrtIsActionInstalled(eventValue, context->currentActionSetCompact))
+		{
+			PRT_DODECL* curr_action_decl = PrtGetAction(context, eventValue);
+			PRT_FUNDECL* do_fun = curr_action_decl->doFun;
+			if (do_fun->isEventDrivenRTAModuleFun) {
+				context->postHandlerOperation = DequeueOrReceive;
+				return PrtCallEventHandler(context, do_fun->implementation, &context->handlerArguments);
+			}
+		}
 		return PRT_TRUE;
 	}
 

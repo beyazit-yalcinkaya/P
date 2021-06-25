@@ -140,8 +140,7 @@ timeDrivenRTAModuleBody : LBRACE timeDrivenController timeDrivenController timeD
 eventDrivenController : CONTROLLER funName=iden SEMI ;
 timeDrivenController : CONTROLLER funName=iden PERIOD period SEMI ;
 
-trigger : ON eventList WITH anonEventHandler
-        | ON eventList WITH funName=iden SEMI
+trigger : ON eventList WITH funName=iden SEMI
         | ON eventList SEMI
         ;
 

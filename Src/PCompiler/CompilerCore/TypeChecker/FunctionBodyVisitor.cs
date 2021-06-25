@@ -59,7 +59,7 @@ namespace Plang.Compiler.TypeChecker
             Function rtaDecisionModule = method.RTADecisionModule;
             Dictionary<string, int> rtaDecisionPeriods = method.RTADecisionPeriods;
 
-            Variable isStarted = machine.Fields.ToList().Find(x => x.Name.Equals("*isStarted") && x.Type.Equals(PrimitiveType.Bool));
+            Variable isStarted = machine.isStartedVar;
 
             List<IPStmt> isStartedCheckThenStatements = new List<IPStmt>();
             IPStmt isStartedTrueAssignment = new AssignStmt(context, new VariableAccessExpr(context, isStarted), new BoolLiteralExpr(context, true));
@@ -68,13 +68,13 @@ namespace Plang.Compiler.TypeChecker
             method.AddCallee(rtaDecisionModule);
             IPExpr decisionModuleCall = new FunCallExpr(context, rtaDecisionModule, emptyArgsList);
 
-            Variable mode = machine.Fields.ToList().Find(x => x.Name.Equals("*mode") && x.Type.Equals(PrimitiveType.String));
+            Variable mode = machine.modeVar;
             AssignStmt modeAssignment = new AssignStmt(context, new VariableAccessExpr(context, mode), decisionModuleCall);
             isStartedCheckThenStatements.Add(modeAssignment);
 
-            Variable decisionPeriod = machine.Fields.ToList().Find(x => x.Name.Equals("*decisionPeriod") && x.Type.Equals(PrimitiveType.Int));
+            Variable decisionPeriod = machine.decisionPeriodVar;
 
-            Variable decisionPeriodCount = machine.Fields.ToList().Find(x => x.Name.Equals("*decisionPeriodCount") && x.Type.Equals(PrimitiveType.Int));
+            Variable decisionPeriodCount = machine.decisionPeriodCountVar;
 
             IPExpr controllerCheckLhs = new VariableAccessExpr(context, mode);
             IPExpr controllerCheckRhs = new StringExpr(context, rtaControllerNames[0], emptyArgsList);
@@ -150,7 +150,7 @@ namespace Plang.Compiler.TypeChecker
             Dictionary<string, int> rtaDecisionPeriods = method.RTADecisionPeriods;
             Dictionary<string, Tuple<int, int>> rtaControllerPeriods = method.RTAControllerPeriods;
 
-            Variable isStarted = machine.Fields.ToList().Find(x => x.Name.Equals("*isStarted") && x.Type.Equals(PrimitiveType.Bool));
+            Variable isStarted = machine.isStartedVar;
 
             List<IPStmt> isStartedCheckThenStatements = new List<IPStmt>();
             IPStmt isStartedTrueAssignment = new AssignStmt(context, new VariableAccessExpr(context, isStarted), new BoolLiteralExpr(context, true));
@@ -159,17 +159,17 @@ namespace Plang.Compiler.TypeChecker
             method.AddCallee(rtaDecisionModule);
             IPExpr decisionModuleCall = new FunCallExpr(context, rtaDecisionModule, emptyArgsList);
 
-            Variable mode = machine.Fields.ToList().Find(x => x.Name.Equals("*mode") && x.Type.Equals(PrimitiveType.String));
+            Variable mode = machine.modeVar;
             AssignStmt modeAssignment = new AssignStmt(context, new VariableAccessExpr(context, mode), decisionModuleCall);
             isStartedCheckThenStatements.Add(modeAssignment);
 
-            Variable decisionPeriod = machine.Fields.ToList().Find(x => x.Name.Equals("*decisionPeriod") && x.Type.Equals(PrimitiveType.Int));
+            Variable decisionPeriod = machine.decisionPeriodVar;
 
-            Variable decisionPeriodCount = machine.Fields.ToList().Find(x => x.Name.Equals("*decisionPeriodCount") && x.Type.Equals(PrimitiveType.Int));
+            Variable decisionPeriodCount = machine.decisionPeriodCountVar;
 
-            Variable period = machine.Fields.ToList().Find(x => x.Name.Equals("*period") && x.Type.Equals(PrimitiveType.Int));
+            Variable period = machine.periodVar;
 
-            Variable periodUnit = machine.Fields.ToList().Find(x => x.Name.Equals("*periodUnit") && x.Type.Equals(PrimitiveType.Int));
+            Variable periodUnit = machine.periodUnitVar;
 
             IPExpr controllerCheckLhs = new VariableAccessExpr(context, mode);
             IPExpr controllerCheckRhs = new StringExpr(context, rtaControllerNames[0], emptyArgsList);

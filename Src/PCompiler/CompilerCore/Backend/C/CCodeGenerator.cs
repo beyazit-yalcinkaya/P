@@ -420,6 +420,10 @@ namespace Plang.Compiler.Backend.C
             string payloadType = isAnon && signature.Count == 1
                 ? $"&{context.Names.GetNameForType(signature[0])}"
                 : "NULL";
+            string isEventDrivenRTAModuleFun =
+                function.Role.HasFlag(FunctionRole.RTAModule) && function.RTAControllerPeriods == null
+                ? "PRT_TRUE"
+                : "PRT_FALSE";
 
             if (!function.IsForeign)
             {
@@ -436,7 +440,8 @@ namespace Plang.Compiler.Backend.C
             context.WriteLine(output, "{");
             context.WriteLine(output, $"{functionName},"); // name of function in original program, NULL if anon
             context.WriteLine(output, $"&{functionImplName},"); // pointer to implementation
-            context.WriteLine(output, $"{payloadType}"); // payload type for anonymous functions
+            context.WriteLine(output, $"{payloadType},"); // payload type for anonymous functions
+            context.WriteLine(output, $"{isEventDrivenRTAModuleFun}");
             context.WriteLine(output, "};");
             context.WriteLine(output);
         }

@@ -83,6 +83,7 @@ extern "C" {
 		PRT_STRING name; /**< name (NULL is anonymous)                                              */
 		PRT_SM_FUN implementation; /**< implementation                                                        */
 		PRT_TYPE* payloadType; /**< payload type for anonymous functions									*/
+		PRT_BOOLEAN isEventDrivenRTAModuleFun;
 	} PRT_FUNDECL;
 
 	/** Represents a P transition declaration */
