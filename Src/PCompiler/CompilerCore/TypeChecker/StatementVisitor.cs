@@ -30,6 +30,11 @@ namespace Plang.Compiler.TypeChecker
         public override IPStmt VisitFunctionBody(PParser.FunctionBodyContext context)
         {
             List<IPStmt> statements = context.statement().Select(Visit).ToList();
+            if (method.Role.HasFlag(FunctionRole.EntryHandler) && machine.isStartedVar != null)
+            {
+                statements.Add(new AssignStmt(context, new VariableAccessExpr(context, machine.isStartedVar), new BoolLiteralExpr(context, false)));
+                statements.Add(new AssignStmt(context, new VariableAccessExpr(context, machine.decisionPeriodCountVar), new IntLiteralExpr(context, 0)));
+            }
             return new CompoundStmt(context, statements);
         }
 

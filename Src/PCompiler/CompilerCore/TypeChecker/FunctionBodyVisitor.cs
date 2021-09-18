@@ -53,6 +53,13 @@ namespace Plang.Compiler.TypeChecker
         public override object VisitEventDrivenRTAModule(PParser.EventDrivenRTAModuleContext context)
         {
             List<IPStmt> statements = new List<IPStmt>();
+            if (method.Role.HasFlag(FunctionRole.EntryHandler) && machine.isStartedVar != null)
+            {
+                statements.Add(new AssignStmt(context, new VariableAccessExpr(context, machine.isStartedVar), new BoolLiteralExpr(context, false)));
+                statements.Add(new AssignStmt(context, new VariableAccessExpr(context, machine.decisionPeriodCountVar), new IntLiteralExpr(context, 0)));
+                method.Body = new CompoundStmt(context, statements);
+                return null;
+            }
             List<IPExpr> emptyArgsList = new List<IPExpr>();
             List<Function> rtaControllers = method.RTAControllers;
             List<string> rtaControllerNames = method.RTAControllerNames;
@@ -143,6 +150,13 @@ namespace Plang.Compiler.TypeChecker
         public override object VisitTimeDrivenRTAModule(PParser.TimeDrivenRTAModuleContext context)
         {
             List<IPStmt> statements = new List<IPStmt>();
+            if (method.Role.HasFlag(FunctionRole.EntryHandler) && machine.isStartedVar != null)
+            {
+                statements.Add(new AssignStmt(context, new VariableAccessExpr(context, machine.isStartedVar), new BoolLiteralExpr(context, false)));
+                statements.Add(new AssignStmt(context, new VariableAccessExpr(context, machine.decisionPeriodCountVar), new IntLiteralExpr(context, 0)));
+                method.Body = new CompoundStmt(context, statements);
+                return null;
+            }
             List<IPExpr> emptyArgsList = new List<IPExpr>();
             List<Function> rtaControllers = method.RTAControllers;
             List<string> rtaControllerNames = method.RTAControllerNames;

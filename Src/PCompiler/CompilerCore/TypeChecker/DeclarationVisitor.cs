@@ -619,6 +619,18 @@ namespace Plang.Compiler.TypeChecker
                     state.Entry?.Signature.Parameters.ElementAtOrDefault(0)?.Type ?? PrimitiveType.Null;
             }
 
+            if (state.Entry == null && state.RTAModule != null) {
+                Function fun = new Function(state.RTAModule)
+                {
+                    Owner = CurrentMachine,
+                    Scope = CurrentScope.MakeChildScope()
+                };
+                CurrentMachine.AddMethod(fun);
+                nodesToDeclarations.Put(context, fun);
+                fun.Role |= FunctionRole.EntryHandler;
+                state.Entry = fun;
+            }
+
             return state;
         }
 
@@ -822,7 +834,7 @@ namespace Plang.Compiler.TypeChecker
                     {
                         throw Handler.MissingDeclaration(trigger.funName, "function", funName);
                     }
-                    eventHandler.Role |= FunctionRole.EntryHandler;
+                    eventHandler.Role |= FunctionRole.EventHandler;
                 }
                 else
                 {
